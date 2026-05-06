@@ -211,8 +211,7 @@ def _build_sheet_sales(wb, with_samples):
         FormulaRule(formula=['$C2="연체"'], fill=PatternFill('solid', start_color='FFF5F5')))
     ws.conditional_formatting.add('R2:R102',
         FormulaRule(formula=['$R2="B계좌"'],
-                    fill=PatternFill('solid', start_color='4A4A4A'),
-                    font=Font(name=FONT_NAME, size=10, bold=True, color='FFFFFF')))
+                    fill=PatternFill('solid', start_color='E8E8E8')))
     ws.conditional_formatting.add('T2:T102',
         FormulaRule(formula=['AND(ISNUMBER($T2),$T2>=8)'], fill=RED_FILL))
     ws.conditional_formatting.add('T2:T102',
@@ -321,8 +320,7 @@ def _build_sheet_purchases(wb, with_samples):
         FormulaRule(formula=['$C2="결제연체"'], fill=PatternFill('solid', start_color='FFF5F5')))
     ws.conditional_formatting.add('R2:R102',
         FormulaRule(formula=['$R2="B계좌"'],
-                    fill=PatternFill('solid', start_color='4A4A4A'),
-                    font=Font(name=FONT_NAME, size=10, bold=True, color='FFFFFF')))
+                    fill=PatternFill('solid', start_color='E8E8E8')))
     ws.conditional_formatting.add('T2:T102',
         FormulaRule(formula=['AND(ISNUMBER($T2),$T2>=8)'], fill=RED_FILL))
     ws.conditional_formatting.add('T2:T102',
@@ -518,8 +516,7 @@ def _build_sheet_bank(wb, with_samples):
         FormulaRule(formula=['AND($E2<>"",$E2>0)'], fill=LIGHT_BLUE_FILL))
     ws.conditional_formatting.add('A2:J152',
         FormulaRule(formula=['$C2="B계좌"'],
-                    fill=PatternFill('solid', start_color='3A3A3A'),
-                    font=Font(name=FONT_NAME, size=10, bold=True, color='FFFFFF')))
+                    fill=PatternFill('solid', start_color='E8E8E8')))
 
     # 통장별 잔고 요약 (오른쪽 L~O)
     ws['L1'] = '통장별 현재 잔고'
@@ -993,8 +990,7 @@ def _build_sheet_receipts(wb, with_samples):
 
     ws.conditional_formatting.add('F5:F205',
         FormulaRule(formula=['$F5="B계좌"'],
-                    fill=PatternFill('solid', start_color='4A4A4A'),
-                    font=Font(name=FONT_NAME, size=10, bold=True, color='FFFFFF')))
+                    fill=PatternFill('solid', start_color='E8E8E8')))
     ws.conditional_formatting.add('G5:G205',
         FormulaRule(formula=['$G5<>""'],
                     fill=PatternFill('solid', start_color='F0FFF0')))
