@@ -137,7 +137,7 @@ def _build_sheet_sales(wb, with_samples):
              None, None, '수금완료'],
             [date(2026, 5, 6), None, None,
              '김씨건축', '강관', '50각', '개', 50, 250000,
-             '현금', '사업자',
+             '현금', 'B계좌',
              date(2026, 5, 6), '',
              None, '', '', '',
              '사업자B',
@@ -181,7 +181,7 @@ def _build_sheet_sales(wb, with_samples):
     dv_pay = DataValidation(type='list', formula1='"즉시,현금,외상1일,외상3일,외상7일,외상15일,외상30일,외상60일,외상90일,어음60일,어음90일"', allow_blank=True)
     dv_pay.add('J2:J102')
     ws.add_data_validation(dv_pay)
-    dv_ent = DataValidation(type='list', formula1='"법인,사업자"', allow_blank=True)
+    dv_ent = DataValidation(type='list', formula1='"법인,사업자,B계좌"', allow_blank=True)
     dv_ent.add('K2:K102')
     ws.add_data_validation(dv_ent)
     dv_ox = DataValidation(type='list', formula1='"O,X"', allow_blank=True)
@@ -254,7 +254,7 @@ def _build_sheet_purchases(wb, with_samples):
              '즉시', '법인', date(2026, 5, 4), 'O', None, 'O', 'O', '20260504-002', '법인A',
              None, None, '결제완료'],
             [date(2026, 5, 5), None, None, '개인 김씨', '고철', '잉여철근', '톤', 1.2, 300000,
-             '현금', '사업자', date(2026, 5, 5), '', None, '', '', '', '사업자B',
+             '현금', 'B계좌', date(2026, 5, 5), '', None, '', '', '', '사업자B',
              None, None, '무자료 고철 매입'],
         ]
         for s in samples:
@@ -292,7 +292,7 @@ def _build_sheet_purchases(wb, with_samples):
     dv_pay2 = DataValidation(type='list', formula1='"즉시,현금,외상1일,외상3일,외상7일,외상15일,외상30일,외상60일,외상90일,어음60일,어음90일"', allow_blank=True)
     dv_pay2.add('J2:J102')
     ws.add_data_validation(dv_pay2)
-    dv_ent2 = DataValidation(type='list', formula1='"법인,사업자"', allow_blank=True)
+    dv_ent2 = DataValidation(type='list', formula1='"법인,사업자,B계좌"', allow_blank=True)
     dv_ent2.add('K2:K102')
     ws.add_data_validation(dv_ent2)
     dv_ox2 = DataValidation(type='list', formula1='"O,X"', allow_blank=True)
@@ -420,9 +420,9 @@ def _build_sheet_customers(wb, with_samples):
             ['매입', '경기메탈', '이사장', '010-5678-9012', '345-67-89012', '경기도 화성',
              date(2026, 5, 3), '외상30일', '법인', None, None, '강관 전문'],
             ['매출', '김씨건축', None, None, '', '',
-             date(2026, 5, 6), '현금', '사업자', None, None, '무자료 거래 (B통장)'],
+             date(2026, 5, 6), '현금', 'B계좌', None, None, '무자료 거래 (B통장)'],
             ['매입', '개인 김씨', None, None, '', '',
-             date(2026, 5, 5), '현금', '사업자', None, None, '무자료 고철 매입 (B통장)'],
+             date(2026, 5, 5), '현금', 'B계좌', None, None, '무자료 고철 매입 (B통장)'],
         ]
         for s in samples:
             ws.append(s)
@@ -452,7 +452,7 @@ def _build_sheet_customers(wb, with_samples):
     dv_pay4 = DataValidation(type='list', formula1='"즉시,현금,외상30일,외상60일,외상90일"', allow_blank=True)
     dv_pay4.add('H2:H52')
     ws.add_data_validation(dv_pay4)
-    dv_ent4 = DataValidation(type='list', formula1='"법인,사업자"', allow_blank=True)
+    dv_ent4 = DataValidation(type='list', formula1='"법인,사업자,B계좌"', allow_blank=True)
     dv_ent4.add('I2:I52')
     ws.add_data_validation(dv_ent4)
 
@@ -591,16 +591,22 @@ def _build_sheet_dashboard(wb):
     ws['B5'] = '=SUMIFS(\'1.매출\'!I:I,\'1.매출\'!A:A,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1),\'1.매출\'!A:A,"<"&DATE(YEAR(TODAY()),MONTH(TODAY())+1,1),\'1.매출\'!K:K,"법인")'
     ws['A6'] = '사업자'
     ws['B6'] = '=SUMIFS(\'1.매출\'!I:I,\'1.매출\'!A:A,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1),\'1.매출\'!A:A,"<"&DATE(YEAR(TODAY()),MONTH(TODAY())+1,1),\'1.매출\'!K:K,"사업자")'
-    ws['A7'] = '합계'; ws['A7'].font = Font(name=FONT_NAME, size=10, bold=True)
+    ws['A7'] = '신고 합계'; ws['A7'].font = Font(name=FONT_NAME, size=10, bold=True)
     ws['B7'] = '=B5+B6'; ws['B7'].font = Font(name=FONT_NAME, size=10, bold=True)
+    ws['A8'] = 'B계좌 (히든)'; ws['A8'].font = Font(name=FONT_NAME, size=10, bold=True, color='4A4A4A')
+    ws['B8'] = '=SUMIFS(\'1.매출\'!I:I,\'1.매출\'!A:A,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1),\'1.매출\'!A:A,"<"&DATE(YEAR(TODAY()),MONTH(TODAY())+1,1),\'1.매출\'!K:K,"B계좌")'
+    ws['B8'].font = Font(name=FONT_NAME, size=10, bold=True, color='4A4A4A')
 
     ws['D4'] = '이번 달 매입'; ws['D4'].font = SUBTITLE_FONT
     ws['D5'] = '법인'
     ws['E5'] = '=SUMIFS(\'2.매입\'!I:I,\'2.매입\'!A:A,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1),\'2.매입\'!A:A,"<"&DATE(YEAR(TODAY()),MONTH(TODAY())+1,1),\'2.매입\'!K:K,"법인")'
     ws['D6'] = '사업자'
     ws['E6'] = '=SUMIFS(\'2.매입\'!I:I,\'2.매입\'!A:A,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1),\'2.매입\'!A:A,"<"&DATE(YEAR(TODAY()),MONTH(TODAY())+1,1),\'2.매입\'!K:K,"사업자")'
-    ws['D7'] = '합계'; ws['D7'].font = Font(name=FONT_NAME, size=10, bold=True)
+    ws['D7'] = '신고 합계'; ws['D7'].font = Font(name=FONT_NAME, size=10, bold=True)
     ws['E7'] = '=E5+E6'; ws['E7'].font = Font(name=FONT_NAME, size=10, bold=True)
+    ws['D8'] = 'B계좌 (히든)'; ws['D8'].font = Font(name=FONT_NAME, size=10, bold=True, color='4A4A4A')
+    ws['E8'] = '=SUMIFS(\'2.매입\'!I:I,\'2.매입\'!A:A,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1),\'2.매입\'!A:A,"<"&DATE(YEAR(TODAY()),MONTH(TODAY())+1,1),\'2.매입\'!K:K,"B계좌")'
+    ws['E8'].font = Font(name=FONT_NAME, size=10, bold=True, color='4A4A4A')
 
     ws['A9'] = '이번 달 추정 영업이익'; ws['A9'].font = SUBTITLE_FONT
     ws['A10'] = '매출 - 매입'
