@@ -371,7 +371,7 @@ CREATE TABLE improvement_ideas (
 
 ```sql
 -- 본인은 모든 데이터 접근 가능
--- 친구는 본인 사업자 데이터(사업자A, 사업자B) 모두 접근
+-- 친구는 본인 사업자 데이터(사업자A, B계좌) 모두 접근
 -- 직원은 사업자A만 (B계좌 차단)
 
 ALTER TABLE bank_transactions ENABLE ROW LEVEL SECURITY;

@@ -140,7 +140,7 @@ def _build_sheet_sales(wb, with_samples):
              '현금', 'B계좌',
              date(2026, 5, 6), '',
              None, '', '', '',
-             '사업자B',
+             'B계좌',
              None, None, '무자료 거래, B통장 입금'],
         ]
         for s in samples:
@@ -151,11 +151,11 @@ def _build_sheet_sales(wb, with_samples):
         ws.cell(row=row, column=2,
                 value=f'=IF($A{row}="","",TEXT($A{row},"YYYYMMDD")&"-"&TEXT(COUNTIF($A$2:$A{row},$A{row}),"000"))')
         ws.cell(row=row, column=3,
-                value=f'=IF($D{row}="","",IF($O{row}="O","수금완료",IF(OR($M{row}="O",$P{row}="O",$R{row}="사업자B"),IF(AND($N{row}<>"",$N{row}<TODAY()),"연체","납품완료"),"주문")))')
+                value=f'=IF($D{row}="","",IF($O{row}="O","수금완료",IF(OR($M{row}="O",$P{row}="O",$R{row}="B계좌"),IF(AND($N{row}<>"",$N{row}<TODAY()),"연체","납품완료"),"주문")))')
         ws.cell(row=row, column=14,
                 value=f'=IF(L{row}="","",IF(J{row}="즉시",L{row},IF(J{row}="현금",L{row},IF(J{row}="외상1일",L{row}+1,IF(J{row}="외상3일",L{row}+3,IF(J{row}="외상7일",L{row}+7,IF(J{row}="외상15일",L{row}+15,IF(J{row}="외상30일",L{row}+30,IF(J{row}="외상60일",L{row}+60,IF(J{row}="외상90일",L{row}+90,IF(J{row}="어음60일",L{row}+60,IF(J{row}="어음90일",L{row}+90,""))))))))))))')
         ws.cell(row=row, column=19,
-                value=f'=IF(I{row}="",0,IF(O{row}="O",0,IF(OR(M{row}="O",P{row}="O",R{row}="사업자B"),I{row},0)))')
+                value=f'=IF(I{row}="",0,IF(O{row}="O",0,IF(OR(M{row}="O",P{row}="O",R{row}="B계좌"),I{row},0)))')
         ws.cell(row=row, column=20,
                 value=f'=IF(OR(S{row}=0,N{row}=""),"",TODAY()-N{row})')
 
@@ -188,7 +188,7 @@ def _build_sheet_sales(wb, with_samples):
     for col in ['M2:M102', 'O2:O102', 'P2:P102', 'Q2:Q102']:
         dv_ox.add(col)
     ws.add_data_validation(dv_ox)
-    dv_account = DataValidation(type='list', formula1='"법인A,사업자A,사업자B,현금,어음"', allow_blank=True)
+    dv_account = DataValidation(type='list', formula1='"법인A,사업자A,B계좌,현금,어음"', allow_blank=True)
     dv_account.add('R2:R102')
     ws.add_data_validation(dv_account)
 
@@ -210,7 +210,7 @@ def _build_sheet_sales(wb, with_samples):
     ws.conditional_formatting.add('A2:U102',
         FormulaRule(formula=['$C2="연체"'], fill=PatternFill('solid', start_color='FFF5F5')))
     ws.conditional_formatting.add('R2:R102',
-        FormulaRule(formula=['$R2="사업자B"'],
+        FormulaRule(formula=['$R2="B계좌"'],
                     fill=PatternFill('solid', start_color='4A4A4A'),
                     font=Font(name=FONT_NAME, size=10, bold=True, color='FFFFFF')))
     ws.conditional_formatting.add('T2:T102',
@@ -254,7 +254,7 @@ def _build_sheet_purchases(wb, with_samples):
              '즉시', '법인', date(2026, 5, 4), 'O', None, 'O', 'O', '20260504-002', '법인A',
              None, None, '결제완료'],
             [date(2026, 5, 5), None, None, '개인 김씨', '고철', '잉여철근', '톤', 1.2, 300000,
-             '현금', 'B계좌', date(2026, 5, 5), '', None, '', '', '', '사업자B',
+             '현금', 'B계좌', date(2026, 5, 5), '', None, '', '', '', 'B계좌',
              None, None, '무자료 고철 매입'],
         ]
         for s in samples:
@@ -264,11 +264,11 @@ def _build_sheet_purchases(wb, with_samples):
         ws.cell(row=row, column=2,
                 value=f'=IF($A{row}="","",TEXT($A{row},"YYYYMMDD")&"-"&TEXT(COUNTIF($A$2:$A{row},$A{row}),"000"))')
         ws.cell(row=row, column=3,
-                value=f'=IF($D{row}="","",IF($O{row}="O","결제완료",IF(OR($M{row}="O",$P{row}="O",$R{row}="사업자B"),IF(AND($N{row}<>"",$N{row}<TODAY()),"결제연체","입고완료"),"발주")))')
+                value=f'=IF($D{row}="","",IF($O{row}="O","결제완료",IF(OR($M{row}="O",$P{row}="O",$R{row}="B계좌"),IF(AND($N{row}<>"",$N{row}<TODAY()),"결제연체","입고완료"),"발주")))')
         ws.cell(row=row, column=14,
                 value=f'=IF(L{row}="","",IF(J{row}="즉시",L{row},IF(J{row}="현금",L{row},IF(J{row}="외상1일",L{row}+1,IF(J{row}="외상3일",L{row}+3,IF(J{row}="외상7일",L{row}+7,IF(J{row}="외상15일",L{row}+15,IF(J{row}="외상30일",L{row}+30,IF(J{row}="외상60일",L{row}+60,IF(J{row}="외상90일",L{row}+90,IF(J{row}="어음60일",L{row}+60,IF(J{row}="어음90일",L{row}+90,""))))))))))))')
         ws.cell(row=row, column=19,
-                value=f'=IF(I{row}="",0,IF(O{row}="O",0,IF(OR(M{row}="O",P{row}="O",R{row}="사업자B"),I{row},0)))')
+                value=f'=IF(I{row}="",0,IF(O{row}="O",0,IF(OR(M{row}="O",P{row}="O",R{row}="B계좌"),I{row},0)))')
         ws.cell(row=row, column=20,
                 value=f'=IF(OR(S{row}=0,N{row}=""),"",TODAY()-N{row})')
 
@@ -299,7 +299,7 @@ def _build_sheet_purchases(wb, with_samples):
     for col in ['M2:M102', 'O2:O102', 'P2:P102']:
         dv_ox2.add(col)
     ws.add_data_validation(dv_ox2)
-    dv_acc2 = DataValidation(type='list', formula1='"법인A,사업자A,사업자B,현금,어음"', allow_blank=True)
+    dv_acc2 = DataValidation(type='list', formula1='"법인A,사업자A,B계좌,현금,어음"', allow_blank=True)
     dv_acc2.add('R2:R102')
     ws.add_data_validation(dv_acc2)
 
@@ -320,7 +320,7 @@ def _build_sheet_purchases(wb, with_samples):
     ws.conditional_formatting.add('A2:U102',
         FormulaRule(formula=['$C2="결제연체"'], fill=PatternFill('solid', start_color='FFF5F5')))
     ws.conditional_formatting.add('R2:R102',
-        FormulaRule(formula=['$R2="사업자B"'],
+        FormulaRule(formula=['$R2="B계좌"'],
                     fill=PatternFill('solid', start_color='4A4A4A'),
                     font=Font(name=FONT_NAME, size=10, bold=True, color='FFFFFF')))
     ws.conditional_formatting.add('T2:T102',
@@ -476,7 +476,7 @@ def _build_sheet_bank(wb, with_samples):
         start_balances = [
             [date(2026, 5, 1), '법인', '법인A', '시작 잔고', 0, 0, 100000000, '시작', '', '본인 자본금 1.5억 + 운영자금'],
             [date(2026, 5, 1), '사업자', '사업자A', '시작 잔고', 0, 0, 5000000, '시작', '', '사업자 운영자금'],
-            [date(2026, 5, 1), '사업자', '사업자B', '시작 잔고', 0, 0, 0, '시작', '', '히든 통장 — 무자료 거래 입금'],
+            [date(2026, 5, 1), '사업자', 'B계좌', '시작 잔고', 0, 0, 0, '시작', '', '히든 통장 — 무자료 거래 입금'],
         ]
         for r in start_balances:
             ws.append(r)
@@ -485,7 +485,7 @@ def _build_sheet_bank(wb, with_samples):
             [date(2026, 5, 3), '법인', '법인A', '식대', 0, 35000, None, '운영비', '', '직원 식대'],
             [date(2026, 5, 4), '법인', '법인A', '박사장 매출 입금', 600000, 0, None, '매출입금', '20260501-001', ''],
             [date(2026, 5, 4), '법인', '법인A', '운반비 지출', 0, 50000, None, '운영비', '', 'A현장 운반'],
-            [date(2026, 5, 6), '사업자', '사업자B', '김씨건축 무자료 입금', 250000, 0, None, '매출입금(B통장)', '20260506-001', '히든 통장'],
+            [date(2026, 5, 6), '사업자', 'B계좌', '김씨건축 무자료 입금', 250000, 0, None, '매출입금(B통장)', '20260506-001', '히든 통장'],
         ]
         for s in samples:
             ws.append(s)
@@ -507,7 +507,7 @@ def _build_sheet_bank(wb, with_samples):
     dv_ent5 = DataValidation(type='list', formula1='"법인,사업자"', allow_blank=True)
     dv_ent5.add('B2:B152')
     ws.add_data_validation(dv_ent5)
-    dv_acc = DataValidation(type='list', formula1='"법인A,사업자A,사업자B,현금"', allow_blank=True)
+    dv_acc = DataValidation(type='list', formula1='"법인A,사업자A,B계좌,현금"', allow_blank=True)
     dv_acc.add('C2:C152')
     ws.add_data_validation(dv_acc)
     dv_cat = DataValidation(type='list', formula1='"시작,매출입금,매출입금(B통장),매입출금,임원보수,임대료,법인카드결제,운영비,세금,차용,기타"', allow_blank=True)
@@ -517,7 +517,7 @@ def _build_sheet_bank(wb, with_samples):
     ws.conditional_formatting.add('E2:E152',
         FormulaRule(formula=['AND($E2<>"",$E2>0)'], fill=LIGHT_BLUE_FILL))
     ws.conditional_formatting.add('A2:J152',
-        FormulaRule(formula=['$C2="사업자B"'],
+        FormulaRule(formula=['$C2="B계좌"'],
                     fill=PatternFill('solid', start_color='3A3A3A'),
                     font=Font(name=FONT_NAME, size=10, bold=True, color='FFFFFF')))
 
@@ -535,7 +535,7 @@ def _build_sheet_bank(wb, with_samples):
         cell.fill = HEADER_FILL
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
-    accounts_summary = ['법인A', '사업자A', '사업자B', '현금']
+    accounts_summary = ['법인A', '사업자A', 'B계좌', '현금']
     for i, acc in enumerate(accounts_summary):
         r = 3 + i
         ws[f'L{r}'] = acc
@@ -545,7 +545,7 @@ def _build_sheet_bank(wb, with_samples):
         for col in ['M', 'N', 'O']:
             ws[f'{col}{r}'].number_format = '#,##0;[Red]-#,##0;-'
             ws[f'{col}{r}'].font = FORMULA_FONT
-        if acc == '사업자B':
+        if acc == 'B계좌':
             ws[f'L{r}'].font = Font(name=FONT_NAME, size=10, bold=True, color='4A4A4A')
         else:
             ws[f'L{r}'].font = INPUT_FONT
@@ -565,7 +565,7 @@ def _build_sheet_bank(wb, with_samples):
     ws.column_dimensions['O'].width = 16
 
     ws.conditional_formatting.add('L3:O6',
-        FormulaRule(formula=['$L3="사업자B"'],
+        FormulaRule(formula=['$L3="B계좌"'],
                     fill=PatternFill('solid', start_color='E8E8E8')))
 
     ws.freeze_panes = 'A2'
@@ -635,8 +635,8 @@ def _build_sheet_dashboard(wb):
     ws['E20'] = "=SUMIFS('6.통장'!E:E,'6.통장'!C:C,\"법인A\")-SUMIFS('6.통장'!F:F,'6.통장'!C:C,\"법인A\")"
     ws['D21'] = '사업자A'
     ws['E21'] = "=SUMIFS('6.통장'!E:E,'6.통장'!C:C,\"사업자A\")-SUMIFS('6.통장'!F:F,'6.통장'!C:C,\"사업자A\")"
-    ws['F20'] = '사업자B (히든)'; ws['F20'].font = Font(name=FONT_NAME, size=10, bold=True, color='4A4A4A')
-    ws['G20'] = "=SUMIFS('6.통장'!E:E,'6.통장'!C:C,\"사업자B\")-SUMIFS('6.통장'!F:F,'6.통장'!C:C,\"사업자B\")"
+    ws['F20'] = 'B계좌 (히든)'; ws['F20'].font = Font(name=FONT_NAME, size=10, bold=True, color='4A4A4A')
+    ws['G20'] = "=SUMIFS('6.통장'!E:E,'6.통장'!C:C,\"B계좌\")-SUMIFS('6.통장'!F:F,'6.통장'!C:C,\"B계좌\")"
     ws['F21'] = '현금'
     ws['G21'] = "=SUMIFS('6.통장'!E:E,'6.통장'!C:C,\"현금\")-SUMIFS('6.통장'!F:F,'6.통장'!C:C,\"현금\")"
 
