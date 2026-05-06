@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual env
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+
+# Workbook 빌드 산출물 (CSV에서 재생성 가능)
+workbook/output/*.xlsx
+
+# 로컬 백업
+backup/
+
+# OS
+.DS_Store
