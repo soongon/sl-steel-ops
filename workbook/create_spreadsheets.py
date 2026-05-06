@@ -419,15 +419,21 @@ def _build_sheet_customers(wb, with_samples):
              date(2026, 5, 2), '즉시', '법인', None, None, '주력 매입처'],
             ['매입', '경기메탈', '이사장', '010-5678-9012', '345-67-89012', '경기도 화성',
              date(2026, 5, 3), '외상30일', '법인', None, None, '강관 전문'],
+            ['매출', '김씨건축', None, None, '', '',
+             date(2026, 5, 6), '현금', '사업자', None, None, '무자료 거래 (B통장)'],
+            ['매입', '개인 김씨', None, None, '', '',
+             date(2026, 5, 5), '현금', '사업자', None, None, '무자료 고철 매입 (B통장)'],
         ]
         for s in samples:
             ws.append(s)
 
     for row in range(2, 52):
         ws.cell(row=row, column=10,
-                value=f'=IF(A{row}="매출",IFERROR(SUMIFS(\'1.매출\'!S:S,\'1.매출\'!D:D,B{row}),0),"")')
+                value=f'=IF(A{row}="매출",IFERROR(SUMIFS(\'1.매출\'!S:S,\'1.매출\'!D:D,B{row}),0),'
+                      f'IF(A{row}="매입",IFERROR(SUMIFS(\'2.매입\'!S:S,\'2.매입\'!D:D,B{row}),0),""))')
         ws.cell(row=row, column=11,
-                value=f'=IF(A{row}="매출",IFERROR(SUMIFS(\'1.매출\'!I:I,\'1.매출\'!D:D,B{row}),0),"")')
+                value=f'=IF(A{row}="매출",IFERROR(SUMIFS(\'1.매출\'!I:I,\'1.매출\'!D:D,B{row}),0),'
+                      f'IF(A{row}="매입",IFERROR(SUMIFS(\'2.매입\'!I:I,\'2.매입\'!D:D,B{row}),0),""))')
 
     set_widths(ws, [8, 18, 10, 16, 16, 22, 12, 12, 12, 14, 14, 22])
 
