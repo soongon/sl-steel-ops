@@ -81,10 +81,11 @@ def build_workbook(output: str = 'SL철강_5월_운영시트.xlsx', with_samples
     _build_sheet_recurring_tasks(wb, with_samples)  # 7.정기업무
     _build_sheet_receivables(wb, with_samples)    # 8.미수관리
     _build_sheet_receipts(wb, with_samples)       # 4.영수증
+    _build_sheet_sales_activities(wb, with_samples)  # 9.영업내역
 
     # 시트 순서 조정 — 4.영수증을 6번째 위치(인덱스 5)로
     # 순서: 현황판(0), 0.개선(1), 1.매출(2), 2.매입(3), 3.재고(4), 4.영수증(5),
-    #      5.거래처(6), 6.통장(7), 7.정기업무(8), 8.미수관리(9)
+    #      5.거래처(6), 6.통장(7), 7.정기업무(8), 8.미수관리(9), 9.영업내역(10)
     _idx = wb.sheetnames.index('4.영수증')
     wb.move_sheet('4.영수증', offset=5 - _idx)
 
@@ -1069,6 +1070,125 @@ def _build_sheet_receipts(wb, with_samples):
     ws.column_dimensions['L'].width = 14
 
     ws.freeze_panes = 'A5'
+
+
+# ============================================================
+# 시트 9: 영업내역 (활동 단위 로그)
+# ============================================================
+# 매출과 달리 5.거래처 마스터 매칭 강제 X — 콜드 prospecting 입력 가능.
+# 등록여부 컬럼이 5.거래처 마스터 lookup으로 등록/잠재 자동 판별.
+# 6월 시스템: sales_activities 테이블 + parties.kind에 PROSPECT enum 추가.
+def _build_sheet_sales_activities(wb, with_samples):
+    ws = wb.create_sheet('9.영업내역')
+
+    headers = [
+        '일자', '활동ID',
+        '거래처/잠재처', '등록여부',
+        '활동유형', '위치/현장', '담당자',
+        '품목', '규격', '예상수량', '예상금액(원)',
+        '결과', '매출ID', '다음 follow-up', '메모'
+    ]
+    ws.append(headers)
+    style_header(ws, 1, len(headers))
+
+    if with_samples:
+        samples = [
+            [date(2026, 5, 3), None,
+             'OO건설', None,
+             '전화', '', '본인',
+             '철근', 'D13', None, None,
+             '진행중', '', date(2026, 5, 10), '납품 일정 확인 — 예시'],
+            [date(2026, 5, 4), None,
+             '동대구 신축현장 (김부장 010-XXXX-XXXX)', None,
+             '명함수령', '동대구 효목동', '본인',
+             '', '', None, None,
+             '진행중', '', date(2026, 5, 15),
+             '지나가다 명함 받음 — 콜드 prospecting 예시'],
+            [date(2026, 5, 5), None,
+             '광안리 OO빌딩', None,
+             '견적', '부산 수영구', '본인',
+             '강관', '50각', 200, 800000,
+             '수주', '20260505-005', None, '수주 → 1.매출 등록 — 예시'],
+        ]
+        for s in samples:
+            ws.append(s)
+
+    # 수식 (100행까지) — 데이터 유무 상관없이 항상 채움
+    for row in range(2, 102):
+        ws.cell(row=row, column=2,
+                value=f'=IF($A{row}="","",TEXT($A{row},"YYYYMMDD")&"-"&TEXT(COUNTIF($A$2:$A{row},$A{row}),"000"))')
+        ws.cell(row=row, column=4,
+                value=f"=IF($C{row}=\"\",\"\",IF(COUNTIF('5.거래처'!$B:$B,$C{row})>0,\"등록\",\"잠재\"))")
+
+    set_widths(ws, [12, 14, 24, 10, 12, 22, 10, 10, 14, 10, 14, 10, 14, 12, 26])
+
+    # 포맷
+    for row in range(2, 102):
+        ws.cell(row=row, column=1).number_format = 'yyyy-mm-dd'
+        ws.cell(row=row, column=14).number_format = 'yyyy-mm-dd'
+        ws.cell(row=row, column=10).number_format = '#,##0.##;[Red]-#,##0.##;-'
+        ws.cell(row=row, column=11).number_format = '#,##0;[Red]-#,##0;-'
+        # 입력 컬럼 — 파랑
+        for col in [1, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]:
+            cell = ws.cell(row=row, column=col)
+            if cell.font == DEFAULT_FONT or cell.font == Font():
+                cell.font = INPUT_FONT
+        # 자동 수식 컬럼 — 검정
+        for col in [2, 4]:
+            ws.cell(row=row, column=col).font = FORMULA_FONT
+
+    # 드롭다운
+    dv_kind = DataValidation(
+        type='list',
+        formula1='"전화,방문,견적,카톡,문자,명함전달,명함수령,현장콜드,기타"',
+        allow_blank=True)
+    dv_kind.add('E2:E102')
+    ws.add_data_validation(dv_kind)
+
+    dv_owner = DataValidation(type='list', formula1='"본인,친구,직원"', allow_blank=True)
+    dv_owner.add('G2:G102')
+    ws.add_data_validation(dv_owner)
+
+    dv_outcome = DataValidation(type='list', formula1='"진행중,수주,실주,보류"', allow_blank=True)
+    dv_outcome.add('L2:L102')
+    ws.add_data_validation(dv_outcome)
+
+    # 조건부 서식 — 결과별 강조
+    ws.conditional_formatting.add('L2:L102',
+        FormulaRule(formula=['$L2="진행중"'], fill=YELLOW_FILL,
+                    font=Font(name=FONT_NAME, size=10, bold=True, color='8B6914')))
+    ws.conditional_formatting.add('L2:L102',
+        FormulaRule(formula=['$L2="수주"'], fill=GREEN_FILL,
+                    font=Font(name=FONT_NAME, size=10, bold=True, color='006600')))
+    ws.conditional_formatting.add('L2:L102',
+        FormulaRule(formula=['$L2="실주"'],
+                    fill=PatternFill('solid', start_color='F2F2F2'),
+                    font=Font(name=FONT_NAME, size=10, color='808080')))
+    ws.conditional_formatting.add('L2:L102',
+        FormulaRule(formula=['$L2="보류"'],
+                    fill=PatternFill('solid', start_color='FFF5E6'),
+                    font=Font(name=FONT_NAME, size=10, color='8B6914')))
+
+    # 행 전체 — 수주는 옅은 녹색, 실주는 옅은 회색
+    ws.conditional_formatting.add('A2:O102',
+        FormulaRule(formula=['$L2="수주"'],
+                    fill=PatternFill('solid', start_color='F0FFF0')))
+    ws.conditional_formatting.add('A2:O102',
+        FormulaRule(formula=['$L2="실주"'],
+                    fill=PatternFill('solid', start_color='FAFAFA')))
+
+    # 등록여부 — 잠재면 옅은 파랑 강조 (콜드 prospecting 시각화)
+    ws.conditional_formatting.add('D2:D102',
+        FormulaRule(formula=['$D2="잠재"'], fill=LIGHT_BLUE_FILL,
+                    font=Font(name=FONT_NAME, size=10, bold=True, color='2C5F8A')))
+
+    # 다음 follow-up overdue (진행중 + follow-up 일자 지남) — 빨강
+    ws.conditional_formatting.add('N2:N102',
+        FormulaRule(formula=['AND($L2="진행중",$N2<>"",$N2<TODAY())'],
+                    fill=RED_FILL,
+                    font=Font(name=FONT_NAME, size=10, bold=True, color='CC0000')))
+
+    ws.freeze_panes = 'C2'
 
 
 # ============================================================

@@ -86,6 +86,12 @@ SHEETS = {
         'formula_cols': [],
         'date_cols': [1],
     },
+    '9.영업내역': {
+        'header_row': 1,
+        'max_col': 15,
+        'formula_cols': [2, 4],                # 활동ID, 등록여부
+        'date_cols': [1, 14],                  # 일자, 다음 follow-up
+    },
 }
 
 # 기본 경로

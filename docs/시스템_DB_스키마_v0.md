@@ -31,7 +31,12 @@ CREATE TYPE payment_term AS ENUM (
 CREATE TYPE sales_status AS ENUM ('ORDER', 'DELIVERED', 'PAID', 'OVERDUE');
 CREATE TYPE purchase_status AS ENUM ('ORDERED', 'RECEIVED', 'SETTLED', 'OVERDUE');
 CREATE TYPE outstanding_grade AS ENUM ('NORMAL', 'SHORT', 'MID', 'LONG');
-CREATE TYPE party_kind AS ENUM ('CUSTOMER', 'SUPPLIER', 'BOTH');
+CREATE TYPE party_kind AS ENUM ('CUSTOMER', 'SUPPLIER', 'BOTH', 'PROSPECT');
+CREATE TYPE activity_kind AS ENUM (
+  'CALL', 'VISIT', 'QUOTE', 'KAKAO', 'SMS',
+  'CARD_GIVEN', 'CARD_RECEIVED', 'COLD_VISIT', 'OTHER'
+);
+CREATE TYPE activity_outcome AS ENUM ('IN_PROGRESS', 'WON', 'LOST', 'ON_HOLD');
 CREATE TYPE expense_category AS ENUM (
   'MEAL', 'VEHICLE', 'PROMOTION', 'OFFICE',
   'SHIPPING', 'TELECOM', 'ENTERTAINMENT', 'CEREMONY', 'OTHER'
@@ -345,6 +350,65 @@ CREATE INDEX idx_recurring_due ON recurring_tasks(next_due_at) WHERE status != '
 ```
 
 5월 워크북의 25개 preset → seed 스크립트로 INSERT.
+
+---
+
+### sales_activities — 영업내역 (워크북의 9.영업내역)
+
+```sql
+CREATE TABLE sales_activities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT GENERATED ALWAYS AS (...) STORED,  -- YYYYMMDD-NNN
+
+  activity_date DATE NOT NULL,
+  party_id UUID NOT NULL REFERENCES parties(id),  -- PROSPECT/CUSTOMER 모두 가능
+  activity_kind activity_kind NOT NULL,
+
+  location TEXT,                       -- 콜드 prospecting의 현장 위치
+  owner_user_id UUID REFERENCES users(id),  -- 본인/친구/직원
+
+  -- 예상 거래 (선택)
+  product TEXT,
+  spec TEXT,
+  expected_quantity NUMERIC,
+  expected_amount NUMERIC,
+
+  -- 진행
+  outcome activity_outcome NOT NULL DEFAULT 'IN_PROGRESS',
+  sale_id UUID REFERENCES sales(id),   -- outcome=WON일 때 매출 FK
+  next_followup_at DATE,
+
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_activities_date ON sales_activities(activity_date);
+CREATE INDEX idx_activities_party ON sales_activities(party_id);
+CREATE INDEX idx_activities_outcome ON sales_activities(outcome);
+CREATE INDEX idx_activities_followup ON sales_activities(next_followup_at)
+  WHERE outcome = 'IN_PROGRESS';
+```
+
+**워크북 → 시스템 매핑 시 주의**:
+- 워크북의 자유텍스트 `거래처/잠재처` → 마이그레이션 스크립트가 `parties` 테이블에 dedup INSERT (이름 매칭, 미존재면 `kind=PROSPECT`로 신규 생성).
+- 워크북의 `등록여부` 컬럼은 시스템에선 제거 — `parties.kind`로 자연스럽게 흡수.
+- 워크북의 `매출ID` (text) → 시스템의 `sale_id` (UUID FK).
+
+파이프라인 view (거래처별 현재 상태):
+
+```sql
+CREATE VIEW party_pipeline AS
+SELECT p.id, p.name, p.kind,
+  COUNT(*) FILTER (WHERE sa.outcome = 'IN_PROGRESS') AS in_progress_count,
+  COUNT(*) FILTER (WHERE sa.outcome = 'WON') AS won_count,
+  COUNT(*) FILTER (WHERE sa.outcome = 'LOST') AS lost_count,
+  MAX(sa.activity_date) AS last_activity_at,
+  MIN(sa.next_followup_at) FILTER (WHERE sa.outcome = 'IN_PROGRESS') AS next_followup_at
+FROM parties p
+LEFT JOIN sales_activities sa ON sa.party_id = p.id
+GROUP BY p.id, p.name, p.kind;
+```
 
 ---
 
