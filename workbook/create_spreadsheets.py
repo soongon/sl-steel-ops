@@ -175,8 +175,8 @@ def _build_sheet_sales(wb, with_samples):
     for row in range(2, 102):
         ws.cell(row=row, column=2,  # B 주문ID
                 value=f'=IF($A{row}="","",TEXT($A{row},"YYYYMMDD")&"-"&TEXT(COUNTIF($A$2:$A{row},$A{row}),"000"))')
-        ws.cell(row=row, column=3,  # C 상태 — 거래처(D), 수금완료(Q), 거래명세서(O), 세금계산서(R), 입금통장(T), 수금예정일(P)
-                value=f'=IF($D{row}="","",IF($Q{row}="O","수금완료",IF(OR($O{row}="O",$R{row}="O",$T{row}="B계좌"),IF(AND($P{row}<>"",$P{row}<TODAY()),"연체","납품완료"),"주문")))')
+        ws.cell(row=row, column=3,  # C 상태 — 거래처(D) OR 현장(E) 둘 중 하나 있으면 평가, 수금완료(Q), 거래명세서(O), 세금계산서(R), 입금통장(T), 수금예정일(P)
+                value=f'=IF(AND($D{row}="",$E{row}=""),"",IF($Q{row}="O","수금완료",IF(OR($O{row}="O",$R{row}="O",$T{row}="B계좌"),IF(AND($P{row}<>"",$P{row}<TODAY()),"연체","납품완료"),"주문")))')
         ws.cell(row=row, column=16,  # P 수금예정일 — 납품일자(N) + 결제방식(L) 일수
                 value=f'=IF(N{row}="","",IF(L{row}="즉시",N{row},IF(L{row}="현금",N{row},IF(L{row}="외상1일",N{row}+1,IF(L{row}="외상3일",N{row}+3,IF(L{row}="외상7일",N{row}+7,IF(L{row}="외상15일",N{row}+15,IF(L{row}="외상30일",N{row}+30,IF(L{row}="외상60일",N{row}+60,IF(L{row}="외상90일",N{row}+90,IF(L{row}="어음60일",N{row}+60,IF(L{row}="어음90일",N{row}+90,""))))))))))))')
         ws.cell(row=row, column=21,  # U 미수금 — 금액(K), 수금완료(Q), 거래명세서(O), 세금계산서(R), 입금통장(T)
