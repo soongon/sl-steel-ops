@@ -31,6 +31,8 @@ from create_spreadsheets import build_workbook  # noqa: E402
 # max_col: 데이터 영역의 최대 컬럼 (영수증 시트는 A~H만, J~L은 합계 영역)
 # formula_cols: 자동 수식 컬럼 (1-based) — CSV에 저장하지 않고, rebuild 시 건드리지 않음
 # date_cols: 날짜 컬럼 (1-based) — CSV ↔ xlsx 변환 시 datetime 처리
+# skip_label_rows: 1열 값이 이 set에 속하는 행은 데이터가 아닌 양식의 일부로 간주하고 추출 제외
+#                  (예: 8.미수관리의 row 57 "합계" 행이 데이터로 추출되는 것을 방지)
 SHEETS = {
     '1.매출': {
         'header_row': 1,
@@ -79,6 +81,7 @@ SHEETS = {
         'max_col': 10,
         'formula_cols': [2, 3, 4, 5, 6, 7, 8],  # 모든 집계는 수식
         'date_cols': [9],                       # 마지막 독촉일
+        'skip_label_rows': {'합계'},            # row 57의 합계 라벨 행 (양식 일부) 제외
     },
     '0.개선아이디어': {
         'header_row': 4,
@@ -163,6 +166,7 @@ def extract(xlsx_path: str = DEFAULT_XLSX, data_dir: Path = DATA_DIR):
         header_row = meta['header_row']
         max_col = meta['max_col']
         date_cols = set(meta['date_cols'])
+        skip_labels = set(meta.get('skip_label_rows', ()))
 
         headers = get_headers(ws, header_row, max_col)
         rows = []
@@ -172,6 +176,9 @@ def extract(xlsx_path: str = DEFAULT_XLSX, data_dir: Path = DATA_DIR):
             # 단, 매출/매입은 1열이 기록일이라 그 기준
             # 거래처/재고/통장/영수증/미수관리/개선아이디어/정기업무도 1열 기준 OK
             if row_values[0] is None or row_values[0] == '':
+                continue
+            # 양식의 라벨 행 (합계, 소계 등) 제외 — 시트별 skip_label_rows 설정
+            if row_values[0] in skip_labels:
                 continue
             rows.append(row_values)
 
