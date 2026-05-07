@@ -520,9 +520,16 @@ def _build_sheet_bank(wb, with_samples):
         for s in samples:
             ws.append(s)
 
+    # 누적잔고 수식 — 분류로 분기:
+    # 분류='시작' 행: 그 통장의 전체 잔고 (시작잔고 + 모든 거래 누적) — 통장별 현재 잔고 표시
+    # 그 외 (거래) 행: row 2부터 현재 row까지 같은 통장 누적 (running balance)
+    # 시작잔고 행은 row 2~4에 위치 (mirror 정렬 정책상 시작 먼저 + 일자 순)
     for row in range(2, 152):
         ws.cell(row=row, column=7,
-                value=f'=IF(C{row}="","",SUMIFS($E$2:E{row},$C$2:C{row},C{row})-SUMIFS($F$2:F{row},$C$2:C{row},C{row}))')
+                value=f'=IF(C{row}="","",'
+                      f'IF(H{row}="시작",'
+                      f'SUMIFS(E:E,C:C,C{row})-SUMIFS(F:F,C:C,C{row}),'
+                      f'SUMIFS($E$2:E{row},$C$2:C{row},C{row})-SUMIFS($F$2:F{row},$C$2:C{row},C{row})))')
 
     set_widths(ws, [12, 10, 12, 25, 14, 14, 16, 18, 14, 22])
 
