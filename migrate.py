@@ -36,9 +36,9 @@ from create_spreadsheets import build_workbook  # noqa: E402
 SHEETS = {
     '1.매출': {
         'header_row': 1,
-        'max_col': 21,
-        'formula_cols': [2, 3, 14, 19, 20],   # 주문ID, 상태, 수금예정일, 미수금, 미수일수
-        'date_cols': [1, 12],                  # 기록일, 납품일자 (수금예정일 N은 수식이라 제외)
+        'max_col': 22,
+        'formula_cols': [2, 3, 15, 20, 21],   # 주문ID, 상태, 수금예정일, 미수금, 미수일수
+        'date_cols': [1, 13],                  # 기록일, 납품일자 (수금예정일 O는 수식이라 제외)
     },
     '2.매입': {
         'header_row': 1,

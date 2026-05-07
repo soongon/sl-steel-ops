@@ -128,6 +128,9 @@ CREATE TABLE sales (
   entity_id UUID NOT NULL REFERENCES entities(id),
   bank_account_id UUID NOT NULL REFERENCES bank_accounts(id),
 
+  -- 현장 (선택) — 거래처와 별개로 현장 단위 추적
+  site_name TEXT,
+
   -- 품목
   product TEXT NOT NULL,
   spec TEXT,

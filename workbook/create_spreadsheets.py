@@ -101,9 +101,16 @@ def build_workbook(output: str = 'SL철강_5월_운영시트.xlsx', with_samples
 def _build_sheet_sales(wb, with_samples):
     ws = wb.create_sheet('1.매출')
 
+    # 컬럼 구조 (22):
+    # A 기록일, B 주문ID(자동), C 상태(자동), D 거래처, E 현장,
+    # F 품목, G 규격, H 단위, I 수량, J 금액(원),
+    # K 결제방식, L 사업자, M 납품일자, N 거래명세서,
+    # O 수금예정일(자동), P 수금완료, Q 세금계산서, R 사진전송, S 입금통장,
+    # T 미수금(자동), U 미수일수(자동), V 메모
     headers = [
         '기록일', '주문ID', '상태',
-        '거래처', '품목', '규격', '단위', '수량', '금액(원)',
+        '거래처', '현장',
+        '품목', '규격', '단위', '수량', '금액(원)',
         '결제방식', '사업자',
         '납품일자', '거래명세서',
         '수금예정일', '수금완료', '세금계산서', '사진전송',
@@ -116,28 +123,32 @@ def _build_sheet_sales(wb, with_samples):
     if with_samples:
         samples = [
             [date(2026, 5, 3), None, None,
-             'OO건설', '철근', 'D13', '톤', 2.5, 1250000,
+             'OO건설', '',
+             '철근', 'D13', '톤', 2.5, 1250000,
              '외상30일', '법인',
              None, '',
              None, '', '', '',
              '법인A',
              None, None, '주문 단계'],
             [date(2026, 5, 1), None, None,
-             '박사장', '각파이프', '50×50×2.0t', '개', 200, 600000,
+             '박사장', '울산 중구 현장',
+             '각파이프', '50×50×2.0t', '개', 200, 600000,
              '외상7일', '법인',
              date(2026, 5, 4), 'O',
              None, '', '', '',
              '법인A',
              None, None, '납품완료, 수금대기'],
             [date(2026, 5, 4), None, None,
-             '소형시공', '철근', 'D10', '톤', 0.8, 384000,
+             '소형시공', '',
+             '철근', 'D10', '톤', 0.8, 384000,
              '현금', '사업자',
              date(2026, 5, 5), 'O',
              None, 'O', 'O', 'O',
              '사업자A',
              None, None, '수금완료'],
             [date(2026, 5, 6), None, None,
-             '김씨건축', '강관', '50각', '개', 50, 250000,
+             '김씨건축', '동대구 효목동',
+             '강관', '50각', '개', 50, 250000,
              '현금', 'B계좌',
              date(2026, 5, 6), '',
              None, '', '', '',
@@ -152,45 +163,52 @@ def _build_sheet_sales(wb, with_samples):
         ws.cell(row=row, column=2,
                 value=f'=IF($A{row}="","",TEXT($A{row},"YYYYMMDD")&"-"&TEXT(COUNTIF($A$2:$A{row},$A{row}),"000"))')
         ws.cell(row=row, column=3,
-                value=f'=IF($D{row}="","",IF($O{row}="O","수금완료",IF(OR($M{row}="O",$P{row}="O",$R{row}="B계좌"),IF(AND($N{row}<>"",$N{row}<TODAY()),"연체","납품완료"),"주문")))')
-        ws.cell(row=row, column=14,
-                value=f'=IF(L{row}="","",IF(J{row}="즉시",L{row},IF(J{row}="현금",L{row},IF(J{row}="외상1일",L{row}+1,IF(J{row}="외상3일",L{row}+3,IF(J{row}="외상7일",L{row}+7,IF(J{row}="외상15일",L{row}+15,IF(J{row}="외상30일",L{row}+30,IF(J{row}="외상60일",L{row}+60,IF(J{row}="외상90일",L{row}+90,IF(J{row}="어음60일",L{row}+60,IF(J{row}="어음90일",L{row}+90,""))))))))))))')
-        ws.cell(row=row, column=19,
-                value=f'=IF(I{row}="",0,IF(O{row}="O",0,IF(OR(M{row}="O",P{row}="O",R{row}="B계좌"),I{row},0)))')
+                value=f'=IF($D{row}="","",IF($P{row}="O","수금완료",IF(OR($N{row}="O",$Q{row}="O",$S{row}="B계좌"),IF(AND($O{row}<>"",$O{row}<TODAY()),"연체","납품완료"),"주문")))')
+        ws.cell(row=row, column=15,
+                value=f'=IF(M{row}="","",IF(K{row}="즉시",M{row},IF(K{row}="현금",M{row},IF(K{row}="외상1일",M{row}+1,IF(K{row}="외상3일",M{row}+3,IF(K{row}="외상7일",M{row}+7,IF(K{row}="외상15일",M{row}+15,IF(K{row}="외상30일",M{row}+30,IF(K{row}="외상60일",M{row}+60,IF(K{row}="외상90일",M{row}+90,IF(K{row}="어음60일",M{row}+60,IF(K{row}="어음90일",M{row}+90,""))))))))))))')
         ws.cell(row=row, column=20,
-                value=f'=IF(OR(S{row}=0,N{row}=""),"",TODAY()-N{row})')
+                value=f'=IF(J{row}="",0,IF(P{row}="O",0,IF(OR(N{row}="O",Q{row}="O",S{row}="B계좌"),J{row},0)))')
+        ws.cell(row=row, column=21,
+                value=f'=IF(OR(T{row}=0,O{row}=""),"",TODAY()-O{row})')
 
-    set_widths(ws, [12, 14, 11, 18, 10, 14, 8, 8, 14, 11, 10, 12, 11, 12, 11, 11, 10, 12, 14, 10, 22])
+    set_widths(ws, [12, 14, 11, 18, 20, 10, 14, 8, 8, 14, 11, 10, 12, 11, 12, 11, 11, 10, 12, 14, 10, 22])
 
     # 포맷
     for row in range(2, 102):
-        ws.cell(row=row, column=8).number_format = '#,##0.##;[Red]-#,##0.##;-'
-        for col in [9, 19]:
+        ws.cell(row=row, column=9).number_format = '#,##0.##;[Red]-#,##0.##;-'   # 수량
+        for col in [10, 20]:                                                       # 금액, 미수금
             ws.cell(row=row, column=col).number_format = '#,##0;[Red]-#,##0;-'
-        ws.cell(row=row, column=1).number_format = 'yyyy-mm-dd'
-        ws.cell(row=row, column=12).number_format = 'yyyy-mm-dd'
-        ws.cell(row=row, column=14).number_format = 'yyyy-mm-dd'
-        ws.cell(row=row, column=20).number_format = '0"일";[Red]+0"일";"-"'
-        for col in [1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 21]:
+        ws.cell(row=row, column=1).number_format = 'yyyy-mm-dd'                    # 기록일
+        ws.cell(row=row, column=13).number_format = 'yyyy-mm-dd'                   # 납품일자
+        ws.cell(row=row, column=15).number_format = 'yyyy-mm-dd'                   # 수금예정일
+        ws.cell(row=row, column=21).number_format = '0"일";[Red]+0"일";"-"'        # 미수일수
+        # 입력 컬럼 — 파랑
+        for col in [1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 22]:
             cell = ws.cell(row=row, column=col)
             if cell.font == DEFAULT_FONT or cell.font == Font():
                 cell.font = INPUT_FONT
-        for col in [2, 3, 14, 19, 20]:
+        # 자동 수식 컬럼 — 검정
+        for col in [2, 3, 15, 20, 21]:
             ws.cell(row=row, column=col).font = FORMULA_FONT
 
     # 드롭다운
+    # 거래처(D) — 5.거래처 마스터에서 선택, null 가능
+    dv_party = DataValidation(type='list', formula1="='5.거래처'!$B$2:$B$52", allow_blank=True)
+    dv_party.add('D2:D102')
+    ws.add_data_validation(dv_party)
+
     dv_pay = DataValidation(type='list', formula1='"즉시,현금,외상1일,외상3일,외상7일,외상15일,외상30일,외상60일,외상90일,어음60일,어음90일"', allow_blank=True)
-    dv_pay.add('J2:J102')
+    dv_pay.add('K2:K102')
     ws.add_data_validation(dv_pay)
     dv_ent = DataValidation(type='list', formula1='"법인,사업자,B계좌"', allow_blank=True)
-    dv_ent.add('K2:K102')
+    dv_ent.add('L2:L102')
     ws.add_data_validation(dv_ent)
     dv_ox = DataValidation(type='list', formula1='"O,X"', allow_blank=True)
-    for col in ['M2:M102', 'O2:O102', 'P2:P102', 'Q2:Q102']:
+    for col in ['N2:N102', 'P2:P102', 'Q2:Q102', 'R2:R102']:
         dv_ox.add(col)
     ws.add_data_validation(dv_ox)
     dv_account = DataValidation(type='list', formula1='"법인A,사업자A,B계좌,현금,어음"', allow_blank=True)
-    dv_account.add('R2:R102')
+    dv_account.add('S2:S102')
     ws.add_data_validation(dv_account)
 
     # 조건부 서식 — 상태 강조
@@ -206,18 +224,18 @@ def _build_sheet_sales(wb, with_samples):
     ws.conditional_formatting.add('C2:C102',
         FormulaRule(formula=['$C2="연체"'], fill=RED_FILL,
                     font=Font(name=FONT_NAME, size=10, bold=True, color='CC0000')))
-    ws.conditional_formatting.add('A2:U102',
+    ws.conditional_formatting.add('A2:V102',
         FormulaRule(formula=['$C2="수금완료"'], fill=PatternFill('solid', start_color='F0FFF0')))
-    ws.conditional_formatting.add('A2:U102',
+    ws.conditional_formatting.add('A2:V102',
         FormulaRule(formula=['$C2="연체"'], fill=PatternFill('solid', start_color='FFF5F5')))
-    ws.conditional_formatting.add('R2:R102',
-        FormulaRule(formula=['$R2="B계좌"'],
+    ws.conditional_formatting.add('S2:S102',
+        FormulaRule(formula=['$S2="B계좌"'],
                     fill=PatternFill('solid', start_color='E8E8E8')))
-    ws.conditional_formatting.add('T2:T102',
-        FormulaRule(formula=['AND(ISNUMBER($T2),$T2>=8)'], fill=RED_FILL))
-    ws.conditional_formatting.add('T2:T102',
-        FormulaRule(formula=['AND(ISNUMBER($T2),$T2>=1,$T2<=7)'], fill=YELLOW_FILL))
-    for col_letter in ['M', 'P', 'Q']:
+    ws.conditional_formatting.add('U2:U102',
+        FormulaRule(formula=['AND(ISNUMBER($U2),$U2>=8)'], fill=RED_FILL))
+    ws.conditional_formatting.add('U2:U102',
+        FormulaRule(formula=['AND(ISNUMBER($U2),$U2>=1,$U2<=7)'], fill=YELLOW_FILL))
+    for col_letter in ['N', 'Q', 'R']:
         ws.conditional_formatting.add(f'{col_letter}2:{col_letter}102',
             FormulaRule(formula=[f'${col_letter}2="O"'], fill=GREEN_FILL))
 
@@ -427,11 +445,12 @@ def _build_sheet_customers(wb, with_samples):
             ws.append(s)
 
     for row in range(2, 52):
+        # 1.매출 참조: 미수금 S → T (col 19→20), 금액 I → J (col 9→10), 거래처 D 그대로
         ws.cell(row=row, column=10,
-                value=f'=IF(A{row}="매출",IFERROR(SUMIFS(\'1.매출\'!S:S,\'1.매출\'!D:D,B{row}),0),'
+                value=f'=IF(A{row}="매출",IFERROR(SUMIFS(\'1.매출\'!T:T,\'1.매출\'!D:D,B{row}),0),'
                       f'IF(A{row}="매입",IFERROR(SUMIFS(\'2.매입\'!S:S,\'2.매입\'!D:D,B{row}),0),""))')
         ws.cell(row=row, column=11,
-                value=f'=IF(A{row}="매출",IFERROR(SUMIFS(\'1.매출\'!I:I,\'1.매출\'!D:D,B{row}),0),'
+                value=f'=IF(A{row}="매출",IFERROR(SUMIFS(\'1.매출\'!J:J,\'1.매출\'!D:D,B{row}),0),'
                       f'IF(A{row}="매입",IFERROR(SUMIFS(\'2.매입\'!I:I,\'2.매입\'!D:D,B{row}),0),""))')
 
     set_widths(ws, [8, 18, 10, 16, 16, 22, 12, 12, 12, 14, 14, 22])
@@ -586,13 +605,13 @@ def _build_sheet_dashboard(wb):
 
     ws['A4'] = '이번 달 매출'; ws['A4'].font = SUBTITLE_FONT
     ws['A5'] = '법인'
-    ws['B5'] = '=SUMIFS(\'1.매출\'!I:I,\'1.매출\'!A:A,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1),\'1.매출\'!A:A,"<"&DATE(YEAR(TODAY()),MONTH(TODAY())+1,1),\'1.매출\'!K:K,"법인")'
+    ws['B5'] = '=SUMIFS(\'1.매출\'!J:J,\'1.매출\'!A:A,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1),\'1.매출\'!A:A,"<"&DATE(YEAR(TODAY()),MONTH(TODAY())+1,1),\'1.매출\'!L:L,"법인")'
     ws['A6'] = '사업자'
-    ws['B6'] = '=SUMIFS(\'1.매출\'!I:I,\'1.매출\'!A:A,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1),\'1.매출\'!A:A,"<"&DATE(YEAR(TODAY()),MONTH(TODAY())+1,1),\'1.매출\'!K:K,"사업자")'
+    ws['B6'] = '=SUMIFS(\'1.매출\'!J:J,\'1.매출\'!A:A,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1),\'1.매출\'!A:A,"<"&DATE(YEAR(TODAY()),MONTH(TODAY())+1,1),\'1.매출\'!L:L,"사업자")'
     ws['A7'] = '신고 합계'; ws['A7'].font = Font(name=FONT_NAME, size=10, bold=True)
     ws['B7'] = '=B5+B6'; ws['B7'].font = Font(name=FONT_NAME, size=10, bold=True)
     ws['A8'] = 'B계좌 (히든)'; ws['A8'].font = Font(name=FONT_NAME, size=10, bold=True, color='4A4A4A')
-    ws['B8'] = '=SUMIFS(\'1.매출\'!I:I,\'1.매출\'!A:A,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1),\'1.매출\'!A:A,"<"&DATE(YEAR(TODAY()),MONTH(TODAY())+1,1),\'1.매출\'!K:K,"B계좌")'
+    ws['B8'] = '=SUMIFS(\'1.매출\'!J:J,\'1.매출\'!A:A,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1),\'1.매출\'!A:A,"<"&DATE(YEAR(TODAY()),MONTH(TODAY())+1,1),\'1.매출\'!L:L,"B계좌")'
     ws['B8'].font = Font(name=FONT_NAME, size=10, bold=True, color='4A4A4A')
 
     ws['D4'] = '이번 달 매입'; ws['D4'].font = SUBTITLE_FONT
@@ -612,13 +631,14 @@ def _build_sheet_dashboard(wb):
 
     ws['A12'] = '미수금 현황 (등급별)'; ws['A12'].font = SUBTITLE_FONT
     ws['A13'] = '정상 (예정일 미도래)'
-    ws['B13'] = '=IFERROR(SUMPRODUCT((\'1.매출\'!N2:N102>=TODAY())*(\'1.매출\'!N2:N102<>"")*(\'1.매출\'!O2:O102<>"O")*(\'1.매출\'!S2:S102)),0)'
+    # 1.매출: 수금예정일 N→O, 수금완료 O→P, 미수금 S→T
+    ws['B13'] = '=IFERROR(SUMPRODUCT((\'1.매출\'!O2:O102>=TODAY())*(\'1.매출\'!O2:O102<>"")*(\'1.매출\'!P2:P102<>"O")*(\'1.매출\'!T2:T102)),0)'
     ws['A14'] = '단기 연체 (1~7일)'
-    ws['B14'] = '=IFERROR(SUMPRODUCT((\'1.매출\'!N2:N102<TODAY())*(\'1.매출\'!N2:N102>=TODAY()-7)*(\'1.매출\'!N2:N102<>"")*(\'1.매출\'!O2:O102<>"O")*(\'1.매출\'!S2:S102)),0)'
+    ws['B14'] = '=IFERROR(SUMPRODUCT((\'1.매출\'!O2:O102<TODAY())*(\'1.매출\'!O2:O102>=TODAY()-7)*(\'1.매출\'!O2:O102<>"")*(\'1.매출\'!P2:P102<>"O")*(\'1.매출\'!T2:T102)),0)'
     ws['A15'] = '중기 연체 (8~30일)'
-    ws['B15'] = '=IFERROR(SUMPRODUCT((\'1.매출\'!N2:N102<TODAY()-7)*(\'1.매출\'!N2:N102>=TODAY()-30)*(\'1.매출\'!N2:N102<>"")*(\'1.매출\'!O2:O102<>"O")*(\'1.매출\'!S2:S102)),0)'
+    ws['B15'] = '=IFERROR(SUMPRODUCT((\'1.매출\'!O2:O102<TODAY()-7)*(\'1.매출\'!O2:O102>=TODAY()-30)*(\'1.매출\'!O2:O102<>"")*(\'1.매출\'!P2:P102<>"O")*(\'1.매출\'!T2:T102)),0)'
     ws['A16'] = '장기 연체 (31일 이상)'
-    ws['B16'] = '=IFERROR(SUMPRODUCT((\'1.매출\'!N2:N102<TODAY()-30)*(\'1.매출\'!N2:N102<>"")*(\'1.매출\'!O2:O102<>"O")*(\'1.매출\'!S2:S102)),0)'
+    ws['B16'] = '=IFERROR(SUMPRODUCT((\'1.매출\'!O2:O102<TODAY()-30)*(\'1.매출\'!O2:O102<>"")*(\'1.매출\'!P2:P102<>"O")*(\'1.매출\'!T2:T102)),0)'
     ws['A17'] = '전체 미수금 합계'; ws['A17'].font = Font(name=FONT_NAME, size=10, bold=True)
     ws['B17'] = '=B13+B14+B15+B16'; ws['B17'].font = Font(name=FONT_NAME, size=10, bold=True)
 
@@ -874,19 +894,20 @@ def _build_sheet_receivables(wb, with_samples):
         for idx, customer in enumerate(preset_customers):
             ws.cell(row=5 + idx, column=1, value=customer)
 
+    # 1.매출 참조: 미수금 S→T (col 19→20), 미수일수 T→U (col 20→21), 거래처 D 그대로
     for row in range(5, 55):
         ws.cell(row=row, column=2,
-            value=f"=IF(A{row}=\"\",\"\",IFERROR(SUMIFS(\'1.매출\'!S:S,\'1.매출\'!D:D,A{row}),0))")
+            value=f"=IF(A{row}=\"\",\"\",IFERROR(SUMIFS(\'1.매출\'!T:T,\'1.매출\'!D:D,A{row}),0))")
         ws.cell(row=row, column=3,
-            value=f"=IF(A{row}=\"\",\"\",IFERROR(SUMPRODUCT((\'1.매출\'!D2:D102=A{row})*(\'1.매출\'!S2:S102>0)),0))")
+            value=f"=IF(A{row}=\"\",\"\",IFERROR(SUMPRODUCT((\'1.매출\'!D2:D102=A{row})*(\'1.매출\'!T2:T102>0)),0))")
         ws.cell(row=row, column=4,
-            value=f"=IF(OR(A{row}=\"\",B{row}=0),\"\",IFERROR(SUMPRODUCT((\'1.매출\'!D2:D102=A{row})*ISNUMBER(\'1.매출\'!T2:T102)*(\'1.매출\'!T2:T102<=0)*\'1.매출\'!S2:S102),0))")
+            value=f"=IF(OR(A{row}=\"\",B{row}=0),\"\",IFERROR(SUMPRODUCT((\'1.매출\'!D2:D102=A{row})*ISNUMBER(\'1.매출\'!U2:U102)*(\'1.매출\'!U2:U102<=0)*\'1.매출\'!T2:T102),0))")
         ws.cell(row=row, column=5,
-            value=f"=IF(OR(A{row}=\"\",B{row}=0),\"\",IFERROR(SUMPRODUCT((\'1.매출\'!D2:D102=A{row})*ISNUMBER(\'1.매출\'!T2:T102)*(\'1.매출\'!T2:T102>0)*(\'1.매출\'!T2:T102<=7)*\'1.매출\'!S2:S102),0))")
+            value=f"=IF(OR(A{row}=\"\",B{row}=0),\"\",IFERROR(SUMPRODUCT((\'1.매출\'!D2:D102=A{row})*ISNUMBER(\'1.매출\'!U2:U102)*(\'1.매출\'!U2:U102>0)*(\'1.매출\'!U2:U102<=7)*\'1.매출\'!T2:T102),0))")
         ws.cell(row=row, column=6,
-            value=f"=IF(OR(A{row}=\"\",B{row}=0),\"\",IFERROR(SUMPRODUCT((\'1.매출\'!D2:D102=A{row})*ISNUMBER(\'1.매출\'!T2:T102)*(\'1.매출\'!T2:T102>7)*(\'1.매출\'!T2:T102<=30)*\'1.매출\'!S2:S102),0))")
+            value=f"=IF(OR(A{row}=\"\",B{row}=0),\"\",IFERROR(SUMPRODUCT((\'1.매출\'!D2:D102=A{row})*ISNUMBER(\'1.매출\'!U2:U102)*(\'1.매출\'!U2:U102>7)*(\'1.매출\'!U2:U102<=30)*\'1.매출\'!T2:T102),0))")
         ws.cell(row=row, column=7,
-            value=f"=IF(OR(A{row}=\"\",B{row}=0),\"\",IFERROR(SUMPRODUCT((\'1.매출\'!D2:D102=A{row})*ISNUMBER(\'1.매출\'!T2:T102)*(\'1.매출\'!T2:T102>30)*\'1.매출\'!S2:S102),0))")
+            value=f"=IF(OR(A{row}=\"\",B{row}=0),\"\",IFERROR(SUMPRODUCT((\'1.매출\'!D2:D102=A{row})*ISNUMBER(\'1.매출\'!U2:U102)*(\'1.매출\'!U2:U102>30)*\'1.매출\'!T2:T102),0))")
         ws.cell(row=row, column=8,
             value=f'=IF(OR(A{row}="",B{row}=0),"",IF(G{row}>0,"장기",IF(F{row}>0,"중기",IF(E{row}>0,"단기",IF(D{row}>0,"정상","")))))')
 
