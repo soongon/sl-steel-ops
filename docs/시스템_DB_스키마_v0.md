@@ -222,12 +222,17 @@ CREATE TABLE purchases (
   entity_id UUID NOT NULL REFERENCES entities(id),
   bank_account_id UUID NOT NULL REFERENCES bank_accounts(id),
 
+  product_code TEXT,                   -- 매입처 SKU/제품번호 — null 가능
   product TEXT NOT NULL,
   spec TEXT,
+  dimensions TEXT NOT NULL,            -- 칫수 (필수)
   unit TEXT,
   quantity NUMERIC,
+  weight NUMERIC,                      -- 중량
   unit_price NUMERIC,                  -- 단가 — null 가능
-  amount NUMERIC NOT NULL,
+  supply_amount NUMERIC NOT NULL,      -- 공급가 (부가세 신고 기준)
+  vat NUMERIC GENERATED ALWAYS AS (ROUND(supply_amount * 0.1)) STORED,
+  total_amount NUMERIC GENERATED ALWAYS AS (supply_amount + ROUND(supply_amount * 0.1)) STORED,
 
   payment_term payment_term NOT NULL,
   receive_date DATE,
