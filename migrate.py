@@ -2,15 +2,21 @@
 """
 SH철강 운영 데이터 마이그레이션 도구
 
-xlsx와 CSV 사이의 양방향 동기화를 담당.
+xlsx와 CSV 사이의 양방향 동기화 + 자동 미러링.
 xlsx는 view, CSV가 truth source.
 
 usage:
     python migrate.py extract                      # xlsx → CSV (데이터 추출)
     python migrate.py rebuild                      # 빈 양식 + CSV → xlsx
-    python migrate.py sync                         # extract + rebuild
+    python migrate.py mirror                       # 매출 수금완료 → 통장 자동 미러링
+    python migrate.py sync                         # extract + mirror (일상 운영)
+    python migrate.py refresh                      # extract + mirror + rebuild (양식 변경 사이클)
     python migrate.py extract --xlsx path/to.xlsx  # 다른 xlsx 지정
-    python migrate.py rebuild --xlsx path/to.xlsx  # 다른 출력 경로
+
+명령 의미:
+    sync     — xlsx 편집 후 백업 + 미러링. xlsx는 그대로 유지 (Excel 캐시 보존).
+    refresh  — 양식(create_spreadsheets.py)이 바뀐 후 xlsx까지 재생성.
+    mirror   — 매출 수금완료 → 6.통장 행 자동 INSERT (매칭ID dedup).
 """
 
 import csv
@@ -255,20 +261,188 @@ def rebuild(xlsx_path: str = DEFAULT_XLSX, data_dir: Path = DATA_DIR):
 
 
 # ============================================================
-# sync: extract + rebuild (양식 변경 시 한 사이클)
+# mirror: 매출 수금완료 → 6.통장 자동 행 추가
+# ============================================================
+# 매출에서 (금액 ✓ + 수금완료=O + 입금통장 ✓) 행을 찾아 6.통장에 입금 행으로 INSERT.
+# 6.통장의 매칭ID로 dedup — 이미 미러링된 행은 skip (idempotent).
+# 사용자가 6.통장 행을 수동 편집하면 그 변경은 보존됨 (mirror가 update X, insert만).
+# ============================================================
+def mirror_sales_to_bank(data_dir: Path = DATA_DIR):
+    """매출 수금완료 → 6.통장 자동 미러링 (INSERT-only, 매칭ID dedup)"""
+    sales_csv = data_dir / '1.매출.csv'
+    bank_csv = data_dir / '6.통장.csv'
+
+    if not sales_csv.exists():
+        print(f'⚠ {sales_csv} 없음 — mirror skip')
+        return 0
+    if not bank_csv.exists():
+        print(f'⚠ {bank_csv} 없음 — mirror skip')
+        return 0
+
+    # 매출 읽기
+    with open(sales_csv, encoding='utf-8-sig') as f:
+        sales_rows = list(csv.DictReader(f))
+
+    # 통장 읽기 (헤더 + 행)
+    with open(bank_csv, encoding='utf-8-sig') as f:
+        reader = csv.reader(f)
+        bank_lines = list(reader)
+    bank_header = bank_lines[0]
+    bank_data = bank_lines[1:]
+
+    # 시작잔고 행과 거래 행 분리 (분류='시작' 기준)
+    # 6.통장 컬럼: 0=일자, 1=사업자, 2=통장, 3=적요, 4=입금, 5=출금,
+    #              6=누적잔고(수식), 7=분류, 8=매칭ID, 9=메모
+    starting_rows = []
+    transaction_rows = []
+    for row in bank_data:
+        category = row[7] if len(row) > 7 else ''
+        if category == '시작':
+            starting_rows.append(row)
+        else:
+            transaction_rows.append(row)
+
+    # 기존 매칭ID 수집 (dedup용)
+    existing_match_ids = set()
+    for row in transaction_rows:
+        match_id = row[8] if len(row) > 8 else ''
+        if match_id:
+            existing_match_ids.add(match_id)
+
+    # 매출에서 미러링 대상 추출 + 새 통장 행 생성
+    added = 0
+    skipped_no_account = []
+    for s in sales_rows:
+        # 금액 0 또는 비어있으면 skip
+        amount_str = s.get('금액(원)', '').strip()
+        try:
+            amount = float(amount_str) if amount_str else 0
+        except ValueError:
+            continue
+        if amount == 0:
+            continue
+        # 수금완료=O 아니면 skip
+        if s.get('수금완료', '').strip() != 'O':
+            continue
+        # 주문ID 없으면 skip (수식 미평가 상태 — 사용자가 xlsx 한 번 열면 채워짐)
+        order_id = s.get('주문ID', '').strip()
+        if not order_id:
+            continue
+        # 이미 미러링됐으면 skip
+        if order_id in existing_match_ids:
+            continue
+        # 입금통장 없으면 skip + 추적
+        bank_account = s.get('입금통장', '').strip()
+        if not bank_account:
+            skipped_no_account.append((order_id, s.get('거래처', '')))
+            continue
+
+        # 통장 행 생성
+        date = (s.get('납품일자') or s.get('수금예정일') or s.get('기록일') or '').strip()
+        entity_raw = s.get('사업자', '').strip()
+        # 사업자 차원 정규화 — 6.통장의 '사업자' 컬럼은 (법인, 사업자) 2분할.
+        # 1.매출에서 사업자=B계좌로 입력된 행은 통장 차원의 'B계좌'(히든 통장)이고
+        # entity 차원으로는 '사업자' 산하. 도메인_룰.md §1 참조.
+        entity = '사업자' if entity_raw == 'B계좌' else entity_raw
+        party = s.get('거래처', '').strip()
+        site = s.get('현장', '').strip()
+        memo = s.get('메모', '').strip()
+
+        # 적요 — "거래처 (현장) 매출 입금"
+        desc = party
+        if site:
+            desc += f' ({site})'
+        desc += ' 매출 입금'
+
+        # 분류 — B계좌면 별도 표시 (부가세 신고 자료 분리용)
+        category = '매출입금(B통장)' if bank_account == 'B계좌' else '매출입금'
+
+        # 입금 금액 (정수면 정수로 표기)
+        amount_str_out = str(int(amount)) if amount == int(amount) else str(amount)
+
+        new_row = [
+            date,             # 일자
+            entity,           # 사업자
+            bank_account,     # 통장
+            desc,             # 적요
+            amount_str_out,   # 입금
+            '0',              # 출금
+            '',               # 누적잔고 (수식 컬럼 — formula_cols=[7]이라 비워둠)
+            category,         # 분류
+            order_id,         # 매칭ID
+            memo,             # 메모
+        ]
+        transaction_rows.append(new_row)
+        existing_match_ids.add(order_id)
+        added += 1
+
+    # skip 알림
+    if skipped_no_account:
+        print(f'⚠ 입금통장 미입력 매출 {len(skipped_no_account)}건 skip:')
+        for oid, party in skipped_no_account:
+            print(f'    {oid} — {party}')
+
+    if added == 0:
+        print(f'✓ 매출 미러링: 추가 0건 (이미 모두 미러링됨)')
+        return 0
+
+    # 거래 행 정렬: 일자 → 매칭ID 보조키
+    transaction_rows.sort(key=lambda r: ((r[0] or ''), (r[8] or '')))
+
+    # 쓰기 — 시작잔고 그대로, 거래는 정렬된 순서로
+    with open(bank_csv, 'w', encoding='utf-8-sig', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(bank_header)
+        for row in starting_rows:
+            writer.writerow(row)
+        for row in transaction_rows:
+            writer.writerow(row)
+
+    print(f'✓ 매출 미러링: {added}건 → {bank_csv.name}')
+    return added
+
+
+# ============================================================
+# sync: extract + mirror (xlsx → CSV + 매출 미러링)
+# ============================================================
+# 일상 운영 명령. xlsx 편집 후 백업/미러링까지 한 번에.
+# 양식 변경(create_spreadsheets.py 수정) 후 xlsx 재생성하려면 'refresh' 사용.
 # ============================================================
 def sync(xlsx_path: str = DEFAULT_XLSX, data_dir: Path = DATA_DIR):
-    """현재 xlsx에서 데이터 추출 → 새 양식으로 재빌드"""
+    """xlsx → CSV + 매출 미러링 (xlsx는 그대로 유지)"""
     print('=' * 60)
-    print('SYNC: 데이터 추출 → 빈 양식 재생성 → 데이터 주입')
+    print('SYNC: 데이터 추출 + 매출 → 통장 미러링')
     print('=' * 60)
-    print('\n[1/2] EXTRACT')
+    print('\n[1/2] EXTRACT (xlsx → CSV)')
     print('-' * 60)
     extract(xlsx_path, data_dir)
-    print('\n[2/2] REBUILD')
+    print('\n[2/2] MIRROR (매출 수금완료 → 통장)')
+    print('-' * 60)
+    mirror_sales_to_bank(data_dir)
+    print('\n✓ SYNC 완료')
+
+
+# ============================================================
+# refresh: extract + mirror + rebuild (양식 변경 사이클)
+# ============================================================
+# create_spreadsheets.py의 양식이 바뀐 후 xlsx까지 재생성할 때 사용.
+# 일상 sync와 분리 — Excel이 박은 수식 캐시가 rebuild로 사라지는 부작용 회피.
+# ============================================================
+def refresh(xlsx_path: str = DEFAULT_XLSX, data_dir: Path = DATA_DIR):
+    """xlsx → CSV → 미러링 → CSV → xlsx (양식 변경 후 사이클)"""
+    print('=' * 60)
+    print('REFRESH: 데이터 추출 + 미러링 + 양식 재빌드')
+    print('=' * 60)
+    print('\n[1/3] EXTRACT')
+    print('-' * 60)
+    extract(xlsx_path, data_dir)
+    print('\n[2/3] MIRROR')
+    print('-' * 60)
+    mirror_sales_to_bank(data_dir)
+    print('\n[3/3] REBUILD')
     print('-' * 60)
     rebuild(xlsx_path, data_dir)
-    print('\n✓ SYNC 완료')
+    print('\n✓ REFRESH 완료')
 
 
 # ============================================================
@@ -282,7 +456,7 @@ def parse_args():
     i = 0
     while i < len(args):
         a = args[i]
-        if a in ('extract', 'rebuild', 'sync'):
+        if a in ('extract', 'rebuild', 'sync', 'mirror', 'refresh'):
             cmd = a
         elif a == '--xlsx':
             xlsx_path = args[i + 1]
@@ -303,5 +477,9 @@ if __name__ == '__main__':
         extract(xlsx_path, data_dir)
     elif cmd == 'rebuild':
         rebuild(xlsx_path, data_dir)
+    elif cmd == 'mirror':
+        mirror_sales_to_bank(data_dir)
     elif cmd == 'sync':
         sync(xlsx_path, data_dir)
+    elif cmd == 'refresh':
+        refresh(xlsx_path, data_dir)
