@@ -7,6 +7,18 @@ usage:
     python create_spreadsheets.py --no-samples                 # 빈 양식 (마이그레이션용)
     python create_spreadsheets.py path/to/output.xlsx          # 경로 지정
     python create_spreadsheets.py path/to/output.xlsx --no-samples
+    python create_spreadsheets.py --force                      # 안전장치 우회 (위험)
+
+안전장치:
+    data/ 디렉토리에 이미 실데이터(헤더 외 행)가 있는 CSV가 있으면,
+    samples 포함 빌드는 거부됨. 실수로 'make build'를 다시 돌려서 xlsx가
+    샘플로 덮어씌워지고, 이후 extract/sync로 샘플이 CSV에 새겨지는
+    데이터 손실 사고를 방지.
+
+    실데이터 있는 상태에서 xlsx를 다시 만들고 싶으면:
+      - python migrate.py rebuild         (권장: CSV 데이터로 xlsx 생성)
+      - python create_spreadsheets.py --no-samples  (빈 양식만)
+      - python create_spreadsheets.py --force        (정말 샘플로 덮어쓰기)
 """
 
 from datetime import date
@@ -1215,18 +1227,55 @@ def _build_sheet_sales_activities(wb, with_samples):
 # ============================================================
 # 진입점
 # ============================================================
+def _safety_check_existing_data(data_dir: Path = Path('data')) -> list:
+    """data/ 디렉토리에 헤더 외 데이터 행이 있는 CSV 목록 반환. 빈 리스트면 안전."""
+    if not data_dir.exists():
+        return []
+    non_empty = []
+    for csv_path in sorted(data_dir.glob('*.csv')):
+        try:
+            with open(csv_path, encoding='utf-8-sig') as f:
+                lines = [ln for ln in f if ln.strip()]
+        except OSError:
+            continue
+        if len(lines) > 1:  # 헤더 외 데이터 행 존재
+            non_empty.append((csv_path.name, len(lines) - 1))
+    return non_empty
+
+
 if __name__ == '__main__':
     import sys
     args = sys.argv[1:]
     output = None
     with_samples = True
+    force = False
     for a in args:
         if a == '--no-samples':
             with_samples = False
+        elif a == '--force':
+            force = True
         else:
             output = a
     if output is None:
         output = 'workbook/output/SL철강_5월_운영시트.xlsx'
+
+    # 안전장치: 실데이터 있는 상태에서 samples 빌드 거부
+    if with_samples and not force:
+        existing = _safety_check_existing_data()
+        if existing:
+            print('⚠ 안전장치 작동: data/에 이미 실데이터가 있습니다.')
+            print('  이 명령은 xlsx를 샘플 데이터로 초기화하려 합니다.')
+            print('  이후 extract/sync 시 샘플이 CSV에 새겨져 실데이터가 손실될 수 있습니다.')
+            print()
+            print('  현재 실데이터 (헤더 외 행수):')
+            for name, n in existing:
+                print(f'    {name}: {n}행')
+            print()
+            print('  의도한 작업이 무엇인가요?')
+            print('    실데이터로 xlsx 재생성 (권장):  python migrate.py rebuild')
+            print('    빈 양식만 (마이그레이션용):     python create_spreadsheets.py --no-samples')
+            print('    정말 샘플로 덮어쓰기 (위험):    python create_spreadsheets.py --force')
+            sys.exit(1)
 
     build_workbook(output, with_samples=with_samples)
     print(f'✓ {output} (samples={with_samples})')

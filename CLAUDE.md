@@ -79,6 +79,7 @@
 ## 자주 하는 실수 — 회피 가이드
 
 - **`load_workbook(..., data_only=True)` 후 `wb.save()` 절대 금지** — 수식이 값으로 덮어씌워져 영구 손실
+- **`make build` 또는 `python workbook/create_spreadsheets.py` (samples=True) 절대 금지** — 5월 1일 첫 시작 후엔 절대 사용 X. xlsx가 샘플로 덮어씌워지고 이후 extract/sync로 샘플이 CSV에 새겨져 실데이터 손실. 안전장치가 거부하지만 `--force` 우회 금지. 양식 재생성은 `make rebuild`.
 - **거래처명 표기 불일치** — "OO건설" / "OO 건설" / "(주)OO건설" 같은 미세한 차이로 SUMIFS 깨짐. 등록 시 표준화 강제.
 - **자동수식 컬럼에 데이터 주입** — `migrate.py`의 `formula_cols` 무시하고 값 넣으면 수식 깨짐
 - **헤더 행 위치 혼동** — 시트마다 헤더 행이 1 또는 4. `migrate.py`의 `SHEETS[name]['header_row']` 참조
