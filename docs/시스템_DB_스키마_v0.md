@@ -136,6 +136,7 @@ CREATE TABLE sales (
   spec TEXT,
   unit TEXT,
   quantity NUMERIC,
+  unit_price NUMERIC,                  -- 단가 — null 가능 (배달비 포함된 행은 amount만 직접 입력)
   amount NUMERIC NOT NULL,
 
   -- 결제
@@ -225,6 +226,7 @@ CREATE TABLE purchases (
   spec TEXT,
   unit TEXT,
   quantity NUMERIC,
+  unit_price NUMERIC,                  -- 단가 — null 가능
   amount NUMERIC NOT NULL,
 
   payment_term payment_term NOT NULL,
