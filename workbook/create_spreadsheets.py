@@ -315,9 +315,10 @@ def _build_sheet_purchases(wb, with_samples):
         # C 상태 — 매입처(D) OR 칫수(H) 둘 중 하나 있으면 평가, 결제완료(U)=O, 거래명세서수취(S)=O, 세금계산서수취(V)=O, 출금통장(X)=B계좌, 결제예정일(T)
         ws.cell(row=row, column=3,
                 value=f'=IF(AND($D{row}="",$H{row}=""),"",IF($U{row}="O","결제완료",IF(OR($S{row}="O",$V{row}="O",$X{row}="B계좌"),IF(AND($T{row}<>"",$T{row}<TODAY()),"결제연체","입고완료"),"발주")))')
-        # N 부가세 — 공급가(M) × 10%
+        # N 부가세 — 공급가(M) × 10%, 단 무자료 매입(사업자=B계좌 OR 출금통장=B계좌)은 0
+        # 도메인_룰 §1: B계좌는 무자료 거래 전용 → 부가세 신고 X
         ws.cell(row=row, column=14,
-                value=f'=IF(M{row}="","",ROUND(M{row}*0.1,0))')
+                value=f'=IF(M{row}="","",IF(OR($Q{row}="B계좌",$X{row}="B계좌"),0,ROUND(M{row}*0.1,0)))')
         # O 합계 — 공급가(M) + 부가세(N)
         ws.cell(row=row, column=15,
                 value=f'=IF(M{row}="","",M{row}+N{row})')
