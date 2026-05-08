@@ -107,6 +107,10 @@ SHEETS = {
 DEFAULT_XLSX = 'workbook/output/SL철강_5월_운영시트.xlsx'
 DATA_DIR = Path('data')
 
+# 미러링 분류 그룹 — dedup 시 같은 그룹 내에서만 검사 (매출/매입 매칭ID 충돌 방지)
+SALES_CATEGORIES = {'매출입금', '매출입금(B통장)'}
+PURCHASE_CATEGORIES = {'매입출금', '매입출금(B통장)'}
+
 
 # ============================================================
 # 값 변환 헬퍼
@@ -302,11 +306,13 @@ def mirror_sales_to_bank(data_dir: Path = DATA_DIR):
         else:
             transaction_rows.append(row)
 
-    # 기존 매칭ID 수집 (dedup용)
+    # 기존 매칭ID 수집 (dedup용) — 매출 분류 그룹 내에서만
+    # 매출/매입은 같은 날짜에 매칭ID(YYYYMMDD-NNN)가 충돌 가능 → 분류로 분리 검사
     existing_match_ids = set()
     for row in transaction_rows:
         match_id = row[8] if len(row) > 8 else ''
-        if match_id:
+        category = row[7] if len(row) > 7 else ''
+        if match_id and category in SALES_CATEGORIES:
             existing_match_ids.add(match_id)
 
     # 매출에서 미러링 대상 추출 + 새 통장 행 생성
@@ -328,7 +334,7 @@ def mirror_sales_to_bank(data_dir: Path = DATA_DIR):
         order_id = s.get('주문ID', '').strip()
         if not order_id:
             continue
-        # 이미 미러링됐으면 skip
+        # 이미 미러링됐으면 skip (매출 분류 그룹 내)
         if order_id in existing_match_ids:
             continue
         # 입금통장 없으면 skip + 추적
@@ -439,10 +445,12 @@ def mirror_purchases_to_bank(data_dir: Path = DATA_DIR):
         else:
             transaction_rows.append(row)
 
+    # dedup용 — 매입 분류 그룹 내에서만 (매출 매칭ID와 충돌 회피)
     existing_match_ids = set()
     for row in transaction_rows:
         match_id = row[8] if len(row) > 8 else ''
-        if match_id:
+        category = row[7] if len(row) > 7 else ''
+        if match_id and category in PURCHASE_CATEGORIES:
             existing_match_ids.add(match_id)
 
     added = 0
@@ -463,7 +471,7 @@ def mirror_purchases_to_bank(data_dir: Path = DATA_DIR):
         purchase_id = p.get('매입ID', '').strip()
         if not purchase_id:
             continue
-        # 이미 미러링
+        # 이미 미러링 (매입 분류 그룹 내)
         if purchase_id in existing_match_ids:
             continue
         # 출금통장 미입력 — skip + 추적
