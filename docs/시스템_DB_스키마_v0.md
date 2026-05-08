@@ -136,8 +136,16 @@ CREATE TABLE sales (
   spec TEXT,
   unit TEXT,
   quantity NUMERIC,
-  unit_price NUMERIC,                  -- 단가 — null 가능 (배달비 포함된 행은 amount만 직접 입력)
-  amount NUMERIC NOT NULL,
+  unit_price NUMERIC,                  -- 단가 — null 가능 (배달비 포함된 행은 supply_amount만 직접 입력)
+  supply_amount NUMERIC NOT NULL,      -- 공급가 (부가세 신고 기준)
+  vat NUMERIC GENERATED ALWAYS AS (
+    CASE
+      WHEN bank_account_id IN (SELECT id FROM bank_accounts WHERE is_hidden) THEN 0
+      ELSE ROUND(supply_amount * 0.1)
+    END
+  ) STORED,
+  total_amount NUMERIC GENERATED ALWAYS AS (supply_amount + vat) STORED,
+  delivery_confirmation_sent BOOLEAN DEFAULT FALSE,  -- 납품확인서송부
 
   -- 결제
   payment_term payment_term NOT NULL,

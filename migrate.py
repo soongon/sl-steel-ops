@@ -42,9 +42,9 @@ from create_spreadsheets import build_workbook  # noqa: E402
 SHEETS = {
     '1.매출': {
         'header_row': 1,
-        'max_col': 23,
-        'formula_cols': [2, 3, 16, 21, 22],   # 주문ID, 상태, 수금예정일, 미수금, 미수일수
-        'date_cols': [1, 14],                  # 기록일, 납품일자 (수금예정일 P는 수식이라 제외)
+        'max_col': 26,
+        'formula_cols': [2, 3, 12, 13, 18, 23, 24],  # 주문ID, 상태, 부가세, 합계, 수금예정일, 미수금, 미수일수
+        'date_cols': [1, 16],                         # 기록일, 납품일자
     },
     '2.매입': {
         'header_row': 1,
@@ -319,8 +319,8 @@ def mirror_sales_to_bank(data_dir: Path = DATA_DIR):
     added = 0
     skipped_no_account = []
     for s in sales_rows:
-        # 금액 0 또는 비어있으면 skip
-        amount_str = s.get('금액(원)', '').strip()
+        # 합계(부가세 포함) 0 또는 비어있으면 skip — 매입 미러링과 일관
+        amount_str = s.get('합계(원)', '').strip()
         try:
             amount = float(amount_str) if amount_str else 0
         except ValueError:
