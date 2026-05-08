@@ -430,6 +430,94 @@ GROUP BY p.id, p.name, p.kind;
 
 ---
 
+### contacts — 명함 (워크북 10.명함)
+
+```sql
+CREATE TYPE contact_status AS ENUM (
+  'PENDING', 'FOLLOWUP', 'PROMOTED', 'LOST', 'ON_HOLD'
+);
+
+CREATE TABLE contacts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT GENERATED ALWAYS AS (
+    'CARD-' || to_char(received_at, 'YYYYMMDD') || '-' || ...
+  ) STORED,
+
+  name TEXT NOT NULL,                       -- 필수
+  company_id UUID REFERENCES parties(id),   -- 정식 거래처와 매핑
+  company_text TEXT,                         -- 자유 텍스트 (콜드, 마스터 미등록)
+
+  title TEXT,                                -- 직책
+  phone TEXT,                                -- 핸드폰
+  email TEXT,
+  company_phone TEXT,                        -- 회사전화
+  address TEXT,
+
+  card_image_url TEXT,                       -- Supabase Storage 명함 사진
+  card_image_ocr_data JSONB,                 -- OCR 파싱 결과 (이름/회사/직책/연락처)
+
+  received_at DATE NOT NULL,
+  received_location TEXT,
+  received_via_activity_id UUID REFERENCES sales_activities(id),
+
+  status contact_status NOT NULL DEFAULT 'PENDING',
+  notes TEXT,
+
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_contacts_received_at ON contacts(received_at);
+CREATE INDEX idx_contacts_company ON contacts(company_id);
+CREATE INDEX idx_contacts_status ON contacts(status);
+CREATE INDEX idx_contacts_phone ON contacts(phone);
+
+-- 9.영업내역에 명함 FK
+ALTER TABLE sales_activities
+  ADD COLUMN contact_id UUID REFERENCES contacts(id);
+```
+
+**워크북 → 시스템 매핑 시 주의**:
+- 워크북 `회사` 컬럼 자유 텍스트 → 마이그레이션 시 5.거래처 마스터와 fuzzy matching → company_id (매칭 실패 시 company_text에 보존)
+- 워크북 `활동ID` → sales_activities FK (received_via_activity_id)
+
+### contact_with_company view (회사 표시 통합)
+
+```sql
+CREATE VIEW contact_with_company AS
+SELECT
+  c.*,
+  COALESCE(p.name, c.company_text) AS company_display,
+  p.kind AS company_kind
+FROM contacts c
+LEFT JOIN parties p ON p.id = c.company_id;
+```
+
+### 명함 → 거래처 promote 함수
+
+```sql
+CREATE OR REPLACE FUNCTION promote_contact_to_party(contact_id UUID, party_kind party_kind)
+RETURNS UUID AS $$
+DECLARE new_party_id UUID;
+BEGIN
+  -- contact의 company_text를 parties로 INSERT
+  INSERT INTO parties (kind, name, ...)
+  SELECT party_kind, c.company_text, ...
+  FROM contacts c WHERE c.id = contact_id
+  RETURNING id INTO new_party_id;
+
+  -- contact 갱신
+  UPDATE contacts
+  SET company_id = new_party_id, status = 'PROMOTED'
+  WHERE id = contact_id;
+
+  RETURN new_party_id;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+---
+
 ### improvement_ideas — 0.개선아이디어
 
 ```sql

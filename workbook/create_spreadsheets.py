@@ -94,6 +94,7 @@ def build_workbook(output: str = 'SL철강_5월_운영시트.xlsx', with_samples
     _build_sheet_receivables(wb, with_samples)    # 8.미수관리
     _build_sheet_receipts(wb, with_samples)       # 4.영수증
     _build_sheet_sales_activities(wb, with_samples)  # 9.영업내역
+    _build_sheet_business_cards(wb, with_samples)    # 10.명함
 
     # 시트 순서 조정 — 4.영수증을 6번째 위치(인덱스 5)로
     # 순서: 현황판(0), 0.개선(1), 1.매출(2), 2.매입(3), 3.재고(4), 4.영수증(5),
@@ -1302,6 +1303,102 @@ def _build_sheet_sales_activities(wb, with_samples):
         FormulaRule(formula=['AND($L2="진행중",$N2<>"",$N2<TODAY())'],
                     fill=RED_FILL,
                     font=Font(name=FONT_NAME, size=10, bold=True, color='CC0000')))
+
+    ws.freeze_panes = 'C2'
+
+
+# ============================================================
+# 시트 10: 명함 (사람 단위 contact 마스터)
+# ============================================================
+# 영업 활동에서 받은 명함을 사람 단위로 관리.
+# - 5.거래처 (회사 단위, 정상거래)와 분리 — 명함은 사람 정보
+# - 9.영업내역 (활동 단위)과 보완 — 활동에서 받은 명함의 상세 정보
+# 6월 시스템: contacts 테이블, OCR 자동 파싱 + 회사명 fuzzy matching.
+def _build_sheet_business_cards(wb, with_samples):
+    ws = wb.create_sheet('10.명함')
+
+    headers = [
+        '받은일자', '명함ID',
+        '이름', '회사', '직책',
+        '핸드폰', '이메일', '회사전화',
+        '주소', '받은 위치',
+        '활동ID', '상태', '메모'
+    ]
+    ws.append(headers)
+    style_header(ws, 1, len(headers))
+
+    if with_samples:
+        samples = [
+            [date(2026, 5, 4), None,
+             '김부장', '동대구 신축현장', '현장소장',
+             '010-XXXX-XXXX', '', '',
+             '동대구 효목동', '동대구 효목동 현장',
+             '20260504-002', '팔로업중',
+             '지나가다 명함 받음 — 콜드 prospecting 예시'],
+        ]
+        for s in samples:
+            ws.append(s)
+
+    # 수식 (100행까지) — 받은일자 + 이름 둘 다 있어야 ID 생성 (이름 필수 강제)
+    for row in range(2, 102):
+        ws.cell(row=row, column=2,
+                value=f'=IF(OR($A{row}="",$C{row}=""),"","CARD-"&TEXT($A{row},"YYYYMMDD")&"-"&TEXT(COUNTIFS($A$2:$A{row},$A{row},$C$2:$C{row},"<>"),"000"))')
+
+    set_widths(ws, [12, 18, 12, 22, 14, 16, 24, 16, 22, 22, 14, 12, 26])
+
+    # 포맷
+    for row in range(2, 102):
+        ws.cell(row=row, column=1).number_format = 'yyyy-mm-dd'
+        # 입력 컬럼 — 파랑
+        for col in [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]:
+            cell = ws.cell(row=row, column=col)
+            if cell.font == DEFAULT_FONT or cell.font == Font():
+                cell.font = INPUT_FONT
+        # 자동 수식 컬럼 — 검정
+        ws.cell(row=row, column=2).font = FORMULA_FONT
+
+    # 드롭다운
+    # 회사(D) — 5.거래처 마스터에서 선택, 자유 텍스트도 허용 (콜드 prospecting)
+    dv_company = DataValidation(
+        type='list', formula1="='5.거래처'!$B$2:$B$52",
+        allow_blank=True, showErrorMessage=False)  # 자유 텍스트도 허용
+    dv_company.add('D2:D102')
+    ws.add_data_validation(dv_company)
+
+    # 상태(L) — dropdown
+    dv_status10 = DataValidation(
+        type='list',
+        formula1='"대기,팔로업중,거래시작,실주,보류"',
+        allow_blank=True)
+    dv_status10.add('L2:L102')
+    ws.add_data_validation(dv_status10)
+
+    # 조건부 서식 — 상태별 색상
+    ws.conditional_formatting.add('L2:L102',
+        FormulaRule(formula=['$L2="대기"'], fill=YELLOW_FILL,
+                    font=Font(name=FONT_NAME, size=10, bold=True, color='8B6914')))
+    ws.conditional_formatting.add('L2:L102',
+        FormulaRule(formula=['$L2="팔로업중"'], fill=LIGHT_BLUE_FILL,
+                    font=Font(name=FONT_NAME, size=10, bold=True, color='2C5F8A')))
+    ws.conditional_formatting.add('L2:L102',
+        FormulaRule(formula=['$L2="거래시작"'], fill=GREEN_FILL,
+                    font=Font(name=FONT_NAME, size=10, bold=True, color='006600')))
+    ws.conditional_formatting.add('L2:L102',
+        FormulaRule(formula=['$L2="실주"'],
+                    fill=PatternFill('solid', start_color='F2F2F2'),
+                    font=Font(name=FONT_NAME, size=10, color='808080')))
+    ws.conditional_formatting.add('L2:L102',
+        FormulaRule(formula=['$L2="보류"'],
+                    fill=PatternFill('solid', start_color='FFF5E6'),
+                    font=Font(name=FONT_NAME, size=10, color='8B6914')))
+
+    # 행 전체 — 거래시작=옅은 녹색, 실주=옅은 회색
+    ws.conditional_formatting.add('A2:M102',
+        FormulaRule(formula=['$L2="거래시작"'],
+                    fill=PatternFill('solid', start_color='F0FFF0')))
+    ws.conditional_formatting.add('A2:M102',
+        FormulaRule(formula=['$L2="실주"'],
+                    fill=PatternFill('solid', start_color='FAFAFA')))
 
     ws.freeze_panes = 'C2'
 

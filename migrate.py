@@ -101,6 +101,12 @@ SHEETS = {
         'formula_cols': [2, 4],                # 활동ID, 등록여부
         'date_cols': [1, 14],                  # 일자, 다음 follow-up
     },
+    '10.명함': {
+        'header_row': 1,
+        'max_col': 13,
+        'formula_cols': [2],                   # 명함ID
+        'date_cols': [1],                       # 받은일자
+    },
 }
 
 # 기본 경로
